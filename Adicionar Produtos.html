@@ -1,0 +1,170 @@
+<html><head><base href="https://websim.virtual-market.com/"><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Lista de Compras Mobile com Soma e Firebase</title><style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f0f0;
+}
+.container {
+    max-width: 100%;
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.input-group {
+    display: flex;
+    margin-bottom: 10px;
+}
+.input-group input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+.input-group input:first-child {
+    margin-right: 5px;
+}
+button {
+    width: 100%;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+button:hover {
+    background-color: #45a049;
+}
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 4px;
+}
+.checkbox {
+    margin-right: 10px;
+}
+.product-name {
+    flex: 1;
+}
+.product-price {
+    font-weight: bold;
+}
+.total {
+    width: 100%;
+    text-align: right;
+    margin-top: 5px;
+    font-weight: bold;
+    color: #4CAF50;
+}
+#grandTotal {
+    margin-top: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    text-align: right;
+}
+</style></head><body>
+<div class="container">
+    <div class="input-group">
+        <input type="text" id="productName" placeholder="Nome do produto">
+        <input type="number" id="productPrice" placeholder="Valor">
+    </div>
+    <button onclick="addProduct()">Adicionar Produto</button>
+    <ul id="productList"></ul>
+    <div id="grandTotal"></div>
+</div>
+
+<script type="module">
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyB9vpYlq-P3GNHRAlktpn_KP0FPUpPHaEk",
+  authDomain: "adsonestoqueadega.firebaseapp.com",
+  databaseURL: "https://adsonestoqueadega-default-rtdb.firebaseio.com",
+  projectId: "adsonestoqueadega",
+  storageBucket: "adsonestoqueadega.appspot.com",
+  messagingSenderId: "608292028556",
+  appId: "1:608292028556:web:ffc71d2f8db650305ffba9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+const productsRef = ref(database, 'products');
+
+let products = [];
+
+function addProduct() {
+    const name = document.getElementById('productName').value;
+    const price = document.getElementById('productPrice').value;
+    
+    if (name && price) {
+        const newProduct = {name, price: parseFloat(price), checked: false};
+        push(productsRef, newProduct);
+        document.getElementById('productName').value = '';
+        document.getElementById('productPrice').value = '';
+    }
+}
+
+function updateList() {
+    const list = document.getElementById('productList');
+    list.innerHTML = '';
+    let runningTotal = 0;
+    products.forEach((product, index) => {
+        const li = document.createElement('li');
+        runningTotal += product.price;
+        li.innerHTML = `
+            <input type="checkbox" class="checkbox" ${product.checked ? 'checked' : ''} onchange="toggleCheck('${product.key}')">
+            <span class="product-name">${product.name}</span>
+            <span class="product-price">R$ ${product.price.toFixed(2)}</span>
+            <div class="total">Total: R$ ${runningTotal.toFixed(2)}</div>
+        `;
+        list.appendChild(li);
+    });
+    updateGrandTotal();
+}
+
+function toggleCheck(key) {
+    const productIndex = products.findIndex(p => p.key === key);
+    if (productIndex !== -1) {
+        products[productIndex].checked = !products[productIndex].checked;
+        const updates = {};
+        updates[`products/${key}/checked`] = products[productIndex].checked;
+        update(ref(database), updates);
+    }
+}
+
+function updateGrandTotal() {
+    const grandTotal = products.reduce((total, product) => total + product.price, 0);
+    document.getElementById('grandTotal').innerHTML = `Total Geral: R$ ${grandTotal.toFixed(2)}`;
+}
+
+// Listen for changes in the database
+onValue(productsRef, (snapshot) => {
+    products = [];
+    snapshot.forEach((childSnapshot) => {
+        const product = childSnapshot.val();
+        product.key = childSnapshot.key;
+        products.push(product);
+    });
+    updateList();
+});
+
+// Make addProduct function available globally
+window.addProduct = addProduct;
+window.toggleCheck = toggleCheck;
+</script>
+</body></html>
